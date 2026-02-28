@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoneyFlow</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:#0f172a;color:white;padding:20px;}
+.card{background:rgba(255,255,255,0.07);padding:20px;border-radius:20px;margin-bottom:20px;}
+input,select,button{width:100%;padding:12px;margin-bottom:10px;border-radius:12px;border:none;font-size:16px;}
+button{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;}
+ul{list-style:none;padding:0;}
+ul li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);}
+footer{text-align:center;padding-top:20px;opacity:0.6;}
+canvas{max-height:300px;}
+</style>
+</head>
+<body>
+<h1>MoneyFlow</h1>
+
+<div class="card">
+<h3>Add Transaction</h3>
+<input id="desc" placeholder="Description">
+<input id="amount" type="number" placeholder="Amount">
+<select id="type">
+<option value="income">Income</option>
+<option value="expense">Expense</option>
+</select>
+<button onclick="addTransaction()">Add</button>
+</div>
+
+<div class="card">
+<h3>Transactions</h3>
+<ul id="list"></ul>
+</div>
+
+<div class="card">
+<h3>Monthly Analytics</h3>
+<canvas id="monthlyChart"></canvas>
+</div>
+
+<footer>Designed by Temoor Ahmed 03005013353</footer>
+
+<script>
+let transactions = [{"desc": "Salary", "amount": 50000, "type": "income", "date": "2026-01-01"}, {"desc": "Food", "amount": 8000, "type": "expense", "date": "2026-01-05"}, {"desc": "Freelance", "amount": 20000, "type": "income", "date": "2026-02-01"}, {"desc": "Shopping", "amount": 6000, "type": "expense", "date": "2026-02-10"}];
+
+function save(){ localStorage.setItem('mf_data',JSON.stringify(transactions)); }
+
+function addTransaction(){
+const desc=document.getElementById('desc').value;
+const amount=parseFloat(document.getElementById('amount').value);
+const type=document.getElementById('type').value;
+if(!desc||!amount)return;
+transactions.push({desc,amount,type,date:new Date()});
+save();
+updateUI();
+}
+
+function updateUI(){
+const list=document.getElementById('list');
+list.innerHTML='';
+transactions.forEach((t,i)=>{
+let li=document.createElement('li');
+li.innerHTML=`${t.desc}<span>${t.amount}</span>`;
+li.onclick=()=>{transactions.splice(i,1);save();updateUI();};
+list.appendChild(li);
+});
+renderMonthlyChart(transactions);
+}
+
+
+function renderMonthlyChart(transactions){
+const ctx=document.getElementById('monthlyChart').getContext('2d');
+
+let months={};
+
+transactions.forEach(t=>{
+let d=new Date(t.date);
+let key=d.getFullYear()+"-"+(d.getMonth()+1);
+if(!months[key]) months[key]={income:0,expense:0};
+if(t.type==='income') months[key].income+=t.amount;
+else months[key].expense+=t.amount;
+});
+
+let labels=Object.keys(months);
+let incomeData=labels.map(l=>months[l].income);
+let expenseData=labels.map(l=>months[l].expense);
+
+if(window.monthChart) window.monthChart.destroy();
+
+window.monthChart=new Chart(ctx,{
+type:'bar',
+data:{
+labels:labels,
+datasets:[
+{label:'Income',data:incomeData},
+{label:'Expense',data:expenseData}
+]
+},
+options:{responsive:true,maintainAspectRatio:false}
+});
+}
+
+updateUI();
+</script>
+</body>
+</html>
