@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoneyFlow</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:#0f172a;color:white;padding:20px;}
+.card{background:rgba(255,255,255,0.07);padding:20px;border-radius:20px;margin-bottom:20px;}
+input,select,button{width:100%;padding:12px;margin-bottom:10px;border-radius:12px;border:none;font-size:16px;}
+button{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;}
+ul{list-style:none;padding:0;}
+ul li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);}
+canvas{max-height:300px;}
+.badge{padding:6px 10px;border-radius:8px;font-size:12px;display:inline-block;margin-bottom:10px;}
+.demo{background:#f59e0b;}
+.admin{background:#10b981;}
+.client{background:#6366f1;}
+</style>
+</head>
+<body>
+
+<h1>MoneyFlow</h1>
+<div id="modeBadge"></div>
+
+<div class="card">
+<h3>Add Transaction</h3>
+<input id="desc" placeholder="Description">
+<input id="amount" type="number" placeholder="Amount">
+<select id="type">
+<option value="income">Income</option>
+<option value="expense">Expense</option>
+</select>
+<select id="category">
+<option>Food</option>
+<option>Transport</option>
+<option>Bills</option>
+<option>Shopping</option>
+<option>Other</option>
+</select>
+<label><input type="checkbox" id="recurring"> Recurring Monthly</label>
+<button onclick="addTransaction()">Add</button>
+</div>
+
+<div class="card">
+<h3>Transactions</h3>
+<ul id="list"></ul>
+</div>
+
+<div class="card">
+<h3>Monthly Analytics</h3>
+<canvas id="monthlyChart"></canvas>
+</div>
+
+<div class="card">
+<button onclick="exportCSV()">Export CSV</button>
+<button onclick="exportJSON()">Export JSON</button>
+</div>
+
+<footer style="text-align:center;opacity:0.6;padding-top:20px;">
+Designed by Temoor Ahmed 03005013353
+</footer>
+
+<script>
+const APP_MODE = "demo";
+
+let demoData=[
+{desc:"Salary",amount:50000,type:"income",category:"Other",date:"2026-01-01"},
+{desc:"Food",amount:8000,type:"expense",category:"Food",date:"2026-01-05"},
+{desc:"Freelance",amount:20000,type:"income",category:"Other",date:"2026-02-01"},
+{desc:"Shopping",amount:6000,type:"expense",category:"Shopping",date:"2026-02-10"}
+];
+
+let transactions = APP_MODE==="demo"
+? demoData
+: JSON.parse(localStorage.getItem("mf_data"))||[];
+
+if(APP_MODE==="admin"){
+let pass=prompt("Enter Admin Password");
+if(pass!=="admin123"){alert("Access Denied");document.body.innerHTML="Access Denied";}
+}
+
+function save(){
+if(APP_MODE!=="demo")
+localStorage.setItem("mf_data",JSON.stringify(transactions));
+}
+
+function addTransaction(){
+if(APP_MODE==="demo"){alert("Demo Mode: Editing Disabled");return;}
+const desc=document.getElementById("desc").value;
+const amount=parseFloat(document.getElementById("amount").value);
+const type=document.getElementById("type").value;
+const category=document.getElementById("category").value;
+if(!desc||!amount)return;
+transactions.push({desc,amount,type,category,date:new Date()});
+save();
+updateUI();
+}
+
+function updateUI(){
+const list=document.getElementById("list");
+list.innerHTML="";
+transactions.forEach((t,i)=>{
+let li=document.createElement("li");
+li.innerHTML=`${t.desc} (${t.category}) <span>${t.amount}</span>`;
+if(APP_MODE!=="demo"){
+li.onclick=()=>{transactions.splice(i,1);save();updateUI();};
+}
+list.appendChild(li);
+});
+renderMonthlyChart(transactions);
+}
+
+function renderMonthlyChart(transactions){
+const ctx=document.getElementById("monthlyChart").getContext("2d");
+let months={};
+transactions.forEach(t=>{
+let d=new Date(t.date);
+let key=d.getFullYear()+"-"+(d.getMonth()+1);
+if(!months[key]) months[key]={income:0,expense:0};
+if(t.type==="income") months[key].income+=t.amount;
+else months[key].expense+=t.amount;
+});
+let labels=Object.keys(months);
+let incomeData=labels.map(l=>months[l].income);
+let expenseData=labels.map(l=>months[l].expense);
+if(window.chart) window.chart.destroy();
+window.chart=new Chart(ctx,{
+type:"bar",
+data:{
+labels:labels,
+datasets:[
+{label:"Income",data:incomeData},
+{label:"Expense",data:expenseData}
+]
+},
+options:{responsive:true,maintainAspectRatio:false}
+});
+}
+
+function exportCSV(){
+let csv="Description,Amount,Type,Category\n";
+transactions.forEach(t=>{
+csv+=`${t.desc},${t.amount},${t.type},${t.category}\n`;
+});
+let blob=new Blob([csv],{type:"text/csv"});
+let url=URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;a.download="moneyflow.csv";a.click();
+}
+
+function exportJSON(){
+let blob=new Blob([JSON.stringify(transactions)],{type:"application/json"});
+let url=URL.createObjectURL(blob);
+let a=document.createElement("a");
+a.href=url;a.download="moneyflow.json";a.click();
+}
+
+function setBadge(){
+let badge=document.getElementById("modeBadge");
+badge.classList.add("badge");
+badge.classList.add(APP_MODE);
+badge.innerText=APP_MODE.toUpperCase()+" MODE";
+}
+
+setBadge();
+updateUI();
+</script>
+
+</body>
+</html>
